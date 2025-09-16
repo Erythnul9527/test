@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue固定导航栏与侧边栏布局</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    :root {
+      --primary: #4361ee;
+      --secondary: #3f37c9;
+      --accent: #4895ef;
+      --dark: #2b2d42;
+      --light: #f8f9fa;
+      --success: #4cc9f0;
+      --danger: #f72585;
+      --warning: #ffd166;
+      --sidebar-width: 250px;
+      --sidebar-collapsed-width: 70px;
+      --header-height: 60px;
+      --transition-speed: 0.3s;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      color: var(--dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* 顶部导航栏样式 */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: var(--header-height);
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 1000;
+      box-shadow: var(--shadow);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-right: 30px;
+    }
+
+    .logo i {
+      margin-right: 10px;
+      font-size: 1.8rem;
+    }
+
+    .nav-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      margin-right: 20px;
+      transition: transform var(--transition-speed);
+    }
+
+    .nav-toggle:hover {
+      transform: scale(1.1);
+    }
+
+    .header-search {
+      flex: 1;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .header-search input {
+      width: 100%;
+      padding: 10px 15px 10px 40px;
+      border-radius: 30px;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 1rem;
+      transition: background 0.3s;
+    }
+
+    .header-search input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .header-search i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .action-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .badge {
+      position: absolute;
+      top: -5px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.6rem;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .user-name {
+      font-weight: 500;
+    }
+
+    /* 侧边栏样式 */
+    .sidebar-container {
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      height: calc(100vh - var(--header-height));
+      background: white;
+      width: var(--sidebar-width);
+      z-index: 900;
+      transition: width var(--transition-speed);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar-container.collapsed {
+      width: var(--sidebar-collapsed-width);
+    }
+
+    .sidebar {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px 0;
+    }
+
+    .menu-title {
+      padding: 10px 20px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      color: #718096;
+      font-weight: 600;
+      letter-spacing: 1px;
+      transition: opacity var(--transition-speed);
+    }
+
+    .sidebar-container.collapsed .menu-title {
+      opacity: 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      color: #4a5568;
+      text-decoration: none;
+      transition: all var(--transition-speed);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      background: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+
+    .nav-item.active {
+      background: rgba(67, 97, 238, 0.15);
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 4px;
+      background: var(--primary);
+    }
+
+    .nav-item i {
+      font-size: 1.2rem;
+      min-width: 24px;
+      margin-right: 15px;
+      transition: margin var(--transition-speed);
+    }
+
+    .sidebar-container.collapsed .nav-item i {
+      margin-right: 0;
+    }
+
+    .nav-item span {
+      transition: opacity var(--transition-speed);
+      white-space: nowrap;
+    }
+
+    .sidebar-container.collapsed .nav-item span {
+      opacity: 0;
+    }
+
+    .nav-item .badge {
+      position: static;
+      margin-left: auto;
+      background: var(--danger);
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .sidebar-container.collapsed .nav-item .badge {
+      display: none;
+    }
+
+    /* 主内容区域样式 */
+    .main-content {
+      margin-top: var(--header-height);
+      margin-left: var(--sidebar-width);
+      padding: 30px;
+      transition: margin-left var(--transition-speed);
+      min-height: calc(100vh - var(--header-height));
+    }
+
+    .sidebar-container.collapsed ~ .main-content {
+      margin-left: var(--sidebar-collapsed-width);
+    }
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .page-title i {
+      color: var(--accent);
+      background: rgba(72, 149, 239, 0.1);
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .card-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .card-icon.blue {
+      background: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+
+    .card-icon.green {
+      background: rgba(76, 201, 240, 0.1);
+      color: var(--success);
+    }
+
+    .card-icon.orange {
+      background: rgba(255, 209, 102, 0.1);
+      color: var(--warning);
+    }
+
+    .card-icon.pink {
+      background: rgba(247, 37, 133, 0.1);
+      color: var(--danger);
+    }
+
+    .card-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #4a5568;
+    }
+
+    .card-footer i {
+      margin-right: 5px;
+    }
+
+    .positive {
+      color: #38a169;
+    }
+
+    .negative {
+      color: #e53e3e;
+    }
+
+    .content-section {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      background: var(--primary);
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline:hover {
+      background: rgba(67, 97, 238, 0.1);
+    }
+
+    .chart-container {
+      height: 300px;
+      margin-top: 20px;
+    }
+
+    .recent-activity {
+      list-style: none;
+    }
+
+    .activity-item {
+      display: flex;
+      padding: 15px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.blue {
+      background: rgba(67, 97, 238, 0.1);
+      color: var(--primary);
+    }
+
+    .activity-icon.green {
+      background: rgba(56, 161, 105, 0.1);
+      color: #38a169;
+    }
+
+    .activity-icon.purple {
+      background: rgba(159, 122, 234, 0.1);
+      color: #9f7aea;
+    }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-title {
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
+
+    .activity-time {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 992px) {
+      .sidebar-container {
+        transform: translateX(-100%);
+      }
+
+      .sidebar-container.collapsed {
+        transform: translateX(-100%);
+        width: var(--sidebar-width);
+      }
+
+      .sidebar-container.active {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0 !important;
+      }
+
+      .header-search {
+        display: none;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .user-name {
+        display: none;
+      }
+
+      .dashboard-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部导航栏 -->
+    <header class="header">
+      <button class="nav-toggle" @click="toggleSidebar">
+        <i :class="sidebarCollapsed ? 'fas fa-bars' : 'fas fa-times'"></i>
+      </button>
+      <div class="logo">
+        <i class="fas fa-cube"></i>
+        <span>Vue Admin</span>
+      </div>
+      <div class="header-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="搜索...">
+      </div>
+      <div class="header-actions">
+        <button class="action-btn">
+          <i class="fas fa-bell"></i>
+          <span class="badge">5</span>
+        </button>
+        <button class="action-btn">
+          <i class="fas fa-envelope"></i>
+          <span class="badge">12</span>
+        </button>
+        <div class="user-profile">
+          <div class="user-avatar">JS</div>
+          <div class="user-name">John Smith</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar-container" :class="{ collapsed: sidebarCollapsed }">
+      <div class="sidebar">
+        <div class="menu-title">主导航</div>
+        <a class="nav-item active">
+          <i class="fas fa-home"></i>
+          <span>控制面板</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-chart-line"></i>
+          <span>数据分析</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-shopping-cart"></i>
+          <span>订单管理</span>
+          <span class="badge">3</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>用户管理</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-box"></i>
+          <span>产品管理</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-cog"></i>
+          <span>系统设置</span>
+        </a>
+
+        <div class="menu-title">其他</div>
+        <a class="nav-item">
+          <i class="fas fa-calendar"></i>
+          <span>日历</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-envelope"></i>
+          <span>消息</span>
+          <span class="badge">12</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>文档</span>
+        </a>
+        <a class="nav-item">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>退出登录</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+      <h1 class="page-title">
+        <i class="fas fa-tachometer-alt"></i>
+        控制面板
+      </h1>
+
+      <div class="dashboard-cards">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">总销售额</div>
+            <div class="card-icon blue">
+              <i class="fas fa-dollar-sign"></i>
+            </div>
+          </div>
+          <div class="card-value">$42,567</div>
+          <div class="card-footer">
+            <i class="fas fa-arrow-up positive"></i>
+            <span class="positive">12.5%</span> 较上月
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">用户数量</div>
+            <div class="card-icon green">
+              <i class="fas fa-users"></i>
+            </div>
+          </div>
+          <div class="card-value">8,942</div>
+          <div class="card-footer">
+            <i class="fas fa-arrow-up positive"></i>
+            <span class="positive">8.2%</span> 较上月
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">订单数量</div>
+            <div class="card-icon orange">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+          </div>
+          <div class="card-value">1,254</div>
+          <div class="card-footer">
+            <i class="fas fa-arrow-down negative"></i>
+            <span class="negative">3.4%</span> 较上月
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">转化率</div>
+            <div class="card-icon pink">
+              <i class="fas fa-percent"></i>
+            </div>
+          </div>
+          <div class="card-value">24.8%</div>
+          <div class="card-footer">
+            <i class="fas fa-arrow-up positive"></i>
+            <span class="positive">4.7%</span> 较上月
+          </div>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">销售统计</h2>
+          <button class="btn">
+            <i class="fas fa-download"></i> 导出报表
+          </button>
+        </div>
+        <div class="chart-container">
+          <canvas ref="salesChart"></canvas>
+        </div>
+      </div>
+
+      <div class="content-section">
+        <div class="section-header">
+          <h2 class="section-title">最近活动</h2>
+          <button class="btn btn-outline">
+            查看全部
+          </button>
+        </div>
+        <ul class="recent-activity">
+          <li class="activity-item">
+            <div class="activity-icon blue">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">新订单 #ORD-00125</div>
+              <div class="activity-time">2分钟前 - 来自John Smith</div>
+            </div>
+          </li>
+          <li class="activity-item">
+            <div class="activity-icon green">
+              <i class="fas fa-user-plus"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">新用户注册</div>
+              <div class="activity-time">1小时前 - sarahj@example.com</div>
+            </div>
+          </li>
+          <li class="activity-item">
+            <div class="activity-icon purple">
+              <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">发票 #INV-2023-08已支付</div>
+              <div class="activity-time">3小时前 - 金额 $1,250.00</div>
+            </div>
+          </li>
+          <li class="activity-item">
+            <div class="activity-icon blue">
+              <i class="fas fa-comment-dots"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">新客户反馈</div>
+              <div class="activity-time">5小时前 - Robert Johnson</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const sidebarCollapsed = ref(false);
+        const salesChart = ref(null);
+        let chartInstance = null;
+
+        const toggleSidebar = () => {
+          sidebarCollapsed.value = !sidebarCollapsed.value;
+        };
+
+        onMounted(() => {
+          // 初始化图表
+          const ctx = salesChart.value.getContext('2d');
+          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+          gradient.addColorStop(0, 'rgba(67, 97, 238, 0.3)');
+          gradient.addColorStop(1, 'rgba(67, 97, 238, 0.05)');
+          
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月'],
+              datasets: [{
+                label: '销售额 (千美元)',
+                data: [25, 32, 28, 41, 36, 52, 48, 65],
+                borderColor: '#4361ee',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointBackgroundColor: '#fff',
+                pointBorderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.3
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                  },
+                  ticks: {
+                    callback: function(value) {
+                      return '$' + value;
+                    }
+                  }
+                },
+                x: {
+                  grid: {
+                    display: false
+                  }
+                }
+              }
+            }
+          });
+        });
+
+        return {
+          sidebarCollapsed,
+          salesChart,
+          toggleSidebar
+        };
+      }
+    }).mount('#app');
+  </script>
+  
+  <!-- 引入Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
